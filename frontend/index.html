@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>  
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inventory Management System</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- DataTables CSS -->
+    <link
+      href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- SweetAlert2 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        padding-top: 60px;
+        background-color: #f8f9fa;
+      }
+      .summary-card {
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      }
+      #inventoryTable_wrapper {
+        margin-top: 1rem;
+      }
+      /* Center and style navbar brand */
+      .navbar-brand {
+        margin: 0 auto;
+        font-weight: 600;
+        font-size: 1.4rem;
+        position: relative;
+        padding-bottom: 0.5rem;
+      }
+      /* Blue underline below heading */
+      .navbar-brand::after {
+        content: "";
+        display: block;
+        width: 60px;
+        height: 3px;
+        background-color: #0d6efd; /* Bootstrap primary blue */
+        margin: 4px auto 0 auto;
+        border-radius: 2px;
+      }
+      /* Modal reset button spacing */
+      #btnReset {
+        margin-right: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Inventory Management System</a>
+      </div>
+    </nav>
+
+    <!-- Main container -->
+    <div class="container">
+      <!-- Summary Cards -->
+      <div class="row text-center mb-4">
+        <div class="col-md-4">
+          <div class="summary-card bg-white p-3">
+            <h5>Total Items</h5>
+            <h2 id="totalItems">0</h2>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card bg-white p-3">
+            <h5>Low Stock Items (&lt; 5)</h5>
+            <h2 id="lowStock">0</h2>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card bg-white p-3">
+            <h5>Total Inventory Value</h5>
+            <h2 id="totalValue">₹0</h2>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="card mb-4">
+        <div class="card-header">Inventory by Category</div>
+        <div class="card-body">
+          <canvas id="categoryChart" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- Inventory Table + Actions -->
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h4>Inventory Items</h4>
+        <div>
+          <button class="btn btn-success me-2" id="btnAddNew">
+            Add New Item
+          </button>
+          <button class="btn btn-outline-primary me-2" id="btnExportCSV">
+            Export CSV
+          </button>
+          <button class="btn btn-outline-primary" id="btnExportPDF">
+            Export PDF
+          </button>
+        </div>
+      </div>
+
+      <table
+        id="inventoryTable"
+        class="display table table-striped"
+        style="width: 100%"
+      >
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Quantity</th>
+            <th>Price (₹)</th>
+            <th>Category</th>
+            <th>Supplier</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div
+      class="modal fade"
+      id="itemModal"
+      tabindex="-1"
+      aria-labelledby="itemModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <form id="itemForm" class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="itemModalLabel">Add New Item</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="itemId" />
+            <div class="mb-3">
+              <label for="itemName" class="form-label"
+                >Item Name <span class="text-danger">*</span></label
+              >
+              <input
+                type="text"
+                id="itemName"
+                class="form-control"
+                required
+                maxlength="255"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="itemQuantity" class="form-label"
+                >Quantity <span class="text-danger">*</span></label
+              >
+              <input
+                type="number"
+                id="itemQuantity"
+                class="form-control"
+                min="0"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="itemPrice" class="form-label">Price (₹)</label>
+              <input
+                type="number"
+                id="itemPrice"
+                class="form-control"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="itemCategory" class="form-label">Category</label>
+              <input
+                type="text"
+                id="itemCategory"
+                class="form-control"
+                maxlength="100"
+              />
+            </div>
+            <div class="mb-3">
+              <label for="itemSupplier" class="form-label">Supplier</label>
+              <input
+                type="text"
+                id="itemSupplier"
+                class="form-control"
+                maxlength="255"
+              />
+            </div>
+          </div>
+          <div class="modal-footer d-flex">
+            <button type="button" id="btnReset" class="btn btn-warning">
+              Reset
+            </button>
+            <button type="submit" class="btn btn-primary" id="btnSave">
+              Save
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- JS Libraries -->
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+      let inventoryTable;
+      let categoryChart;
+      let itemModal;
+      let currentEditId = null;
+
+      // === CHANGE THIS to your backend API URL, including port if needed ===
+      const apiBase = "http://65.2.5.4:3000";
+
+      function initDataTable() {
+        inventoryTable = $("#inventoryTable").DataTable({
+          columns: [
+            { data: "name" },
+            { data: "quantity" },
+            {
+              data: "price",
+              render: (data) =>
+                data ? "₹" + parseFloat(data).toFixed(2) : "₹0.00",
+            },
+            { data: "category" },
+            { data: "supplier" },
+            {
+              data: null,
+              orderable: false,
+              render: (data, type, row) => `
+            <button class="btn btn-sm btn-primary edit-btn" data-id="${row.id}">Edit</button>
+            <button class="btn btn-sm btn-danger delete-btn ms-2" data-id="${row.id}">Delete</button>
+          `,
+            },
+          ],
+          pageLength: 10,
+          lengthChange: false,
+          searching: true,
+          info: false,
+          autoWidth: false,
+          order: [[0, "asc"]],
+        });
+
+        $("#inventoryTable tbody").on("click", ".edit-btn", function () {
+          const id = $(this).data("id");
+          openEditModal(id);
+        });
+
+        $("#inventoryTable tbody").on("click", ".delete-btn", function () {
+          const id = $(this).data("id");
+          confirmDelete(id);
+        });
+      }
+
+      async function loadInventory() {
+        try {
+          const response = await axios.get(`${apiBase}/inventory`);
+          const items = response.data;
+          updateSummary(items);
+          updateTable(items);
+          updateChart(items);
+        } catch (error) {
+          Swal.fire("Error", "Failed to load inventory data.", "error");
+          console.error(error);
+        }
+      }
+
+      function updateSummary(items) {
+        $("#totalItems").text(items.length);
+        const lowStockCount = items.filter((i) => i.quantity < 5).length;
+        $("#lowStock").text(lowStockCount);
+        const totalValue = items.reduce(
+          (sum, i) => sum + (i.price || 0) * i.quantity,
+          0
+        );
+        $("#totalValue").text("₹" + totalValue.toFixed(2));
+      }
+
+      function updateTable(items) {
+        inventoryTable.clear();
+        inventoryTable.rows.add(items);
+        inventoryTable.draw();
+      }
+
+      function updateChart(items) {
+        const categoryCounts = {};
+        items.forEach((item) => {
+          const cat = item.category || "Uncategorized";
+          categoryCounts[cat] = (categoryCounts[cat] || 0) + item.quantity;
+        });
+
+        const labels = Object.keys(categoryCounts);
+        const data = Object.values(categoryCounts);
+
+        if (!categoryChart) {
+          const ctx = document.getElementById("categoryChart").getContext("2d");
+          categoryChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Quantity",
+                  data,
+                  backgroundColor: "#0d6efd",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true },
+              },
+            },
+          });
+        } else {
+          categoryChart.data.labels = labels;
+          categoryChart.data.datasets[0].data = data;
+          categoryChart.update();
+        }
+      }
+
+      async function getItem(id) {
+        try {
+          const response = await axios.get(`${apiBase}/inventory/${id}`);
+          return response.data;
+        } catch (error) {
+          Swal.fire("Error", "Failed to get item details.", "error");
+          console.error(error);
+          return null;
+        }
+      }
+
+      function clearForm() {
+        $("#itemId").val("");
+        $("#itemName").val("");
+        $("#itemQuantity").val("");
+        $("#itemPrice").val("");
+        $("#itemCategory").val("");
+        $("#itemSupplier").val("");
+      }
+
+      function openAddModal() {
+        currentEditId = null;
+        clearForm();
+        $("#itemModalLabel").text("Add New Item");
+        itemModal.show();
+      }
+
+      async function openEditModal(id) {
+        const item = await getItem(id);
+        if (!item) return;
+
+        currentEditId = id;
+        $("#itemModalLabel").text("Edit Item");
+        $("#itemId").val(item.id);
+        $("#itemName").val(item.name);
+        $("#itemQuantity").val(item.quantity);
+        $("#itemPrice").val(item.price || "");
+        $("#itemCategory").val(item.category || "");
+        $("#itemSupplier").val(item.supplier || "");
+
+        itemModal.show();
+      }
+
+      async function addItem(itemData) {
+        try {
+          await axios.post(`${apiBase}/inventory`, itemData);
+          Swal.fire("Success", "Item added successfully.", "success");
+        } catch (error) {
+          Swal.fire("Error", "Failed to add item.", "error");
+          console.error(error);
+        }
+      }
+
+      async function updateItem(id, itemData) {
+        try {
+          await axios.put(`${apiBase}/inventory/${id}`, itemData);
+          Swal.fire("Success", "Item updated successfully.", "success");
+        } catch (error) {
+          Swal.fire("Error", "Failed to update item.", "error");
+          console.error(error);
+        }
+      }
+
+      async function deleteItem(id) {
+        try {
+          await axios.delete(`${apiBase}/inventory/${id}`);
+          Swal.fire("Deleted!", "Item has been deleted.", "success");
+        } catch (error) {
+          Swal.fire("Error", "Failed to delete item.", "error");
+          console.error(error);
+        }
+      }
+
+      function confirmDelete(id) {
+        Swal.fire({
+          title: "Are you sure?",
+          text: "This item will be permanently deleted.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Yes, delete it!",
+          cancelButtonText: "Cancel",
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await deleteItem(id);
+            loadInventory();
+          }
+        });
+      }
+
+      async function handleFormSubmit(event) {
+        event.preventDefault();
+
+        const id = $("#itemId").val();
+        const itemData = {
+          name: $("#itemName").val().trim(),
+          quantity: parseInt($("#itemQuantity").val(), 10),
+          price: parseFloat($("#itemPrice").val()) || 0,
+          category: $("#itemCategory").val().trim(),
+          supplier: $("#itemSupplier").val().trim(),
+        };
+
+        if (!itemData.name) {
+          Swal.fire("Validation Error", "Item Name is required.", "warning");
+          return;
+        }
+        if (isNaN(itemData.quantity) || itemData.quantity < 0) {
+          Swal.fire(
+            "Validation Error",
+            "Quantity must be 0 or greater.",
+            "warning"
+          );
+          return;
+        }
+        if (itemData.price < 0) {
+          Swal.fire("Validation Error", "Price cannot be negative.", "warning");
+          return;
+        }
+
+        if (id) {
+          await updateItem(id, itemData);
+        } else {
+          await addItem(itemData);
+        }
+
+        itemModal.hide();
+        loadInventory();
+      }
+
+      // Reset form fields
+      function handleReset() {
+        clearForm();
+      }
+
+      function exportCSV() {
+        window.open(`${apiBase}/export/csv`, "_blank");
+      }
+
+      function exportPDF() {
+        window.open(`${apiBase}/export/pdf`, "_blank");
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        itemModal = new bootstrap.Modal(document.getElementById("itemModal"));
+        initDataTable();
+        loadInventory();
+
+        $("#btnAddNew").on("click", openAddModal);
+        $("#itemForm").on("submit", handleFormSubmit);
+        $("#btnReset").on("click", handleReset);
+        $("#btnExportCSV").on("click", exportCSV);
+        $("#btnExportPDF").on("click", exportPDF);
+      });
+    </script>
+  </body>
+</html>
