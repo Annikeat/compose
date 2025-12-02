@@ -11,3 +11,31 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with: 
+          username: ${{ secrets.DOCEKR_USERNAME }}
+          password: ${{ secrets.DOCEKR_PASSWORD }}
+      
+      - name: Set a Version Tag
+        id: version
+        run: echo "TAG=v${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Build & Push Frontend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            aniketjok/compose-frontend:${{ env.TAG }}
+            aniketjok/compose-frontend:latest
+
+      - name: Build & Push backend Image
+        uses: docker/build-push-action@v6
+        with: 
+          context: ./backend
+          push: true
+          tags: |
+            aniketjok/compose-backend:${{ env.TAG }}
+            aniketjok/compose-backend:latest
+        
