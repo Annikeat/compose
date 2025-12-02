@@ -1,0 +1,13 @@
+name: Build and Store docker Image
+
+on: 
+   workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: Ubuntu:latest
+
+    steps: 
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
